@@ -104,7 +104,7 @@
   </style>
 </head>
 <body>
-  <h1>🎯 الهدف: 2000 ريال</h1>
+  <h1>🎯 الهدف: 1300 ريال</h1>
   <h2 id="total">المجموع الحالي: 0 ريال</h2>
   <div class="progress"><i id="progress"></i></div>
 
@@ -173,7 +173,7 @@
         tbody.appendChild(tr);
       });
       document.getElementById('total').textContent = `المجموع الحالي: ${total} ريال`;
-      document.getElementById('progress').style.width = Math.min(100,(total/2000*100))+'%';
+      document.getElementById('progress').style.width = Math.min(100,(total/1300*100))+'%';
     }
 
     document.getElementById('add').onclick = async () => {
