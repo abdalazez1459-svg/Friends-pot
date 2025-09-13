@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>صندوق الأصدقاء - Firebase Online</title>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, Arial, sans-serif;
+      background: linear-gradient(135deg, #0f1724, #1e293b);
+      color: #f1f5f9;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 26px;
+      text-shadow: 1px 1px 4px #000;
+    }
+
+    h2 {
+      margin: 8px 0;
+      font-size: 18px;
+      color: #94a3b8;
+    }
+
+    .progress {
+      height: 24px;
+      background: #1e293b;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 12px 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+
+    .progress>i {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #06b6d4, #7c3aed);
+      width: 0%;
+      transition: width 0.5s ease-in-out;
+    }
+
+    select, input, button {
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      font-size: 16px;
+      margin: 8px 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    select, input {
+      width: 100%;
+      max-width: 320px;
+    }
+
+    button {
+      cursor: pointer;
+      transition: opacity 0.3s, transform 0.2s;
+    }
+
+    button:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+
+    #add {
+      background: linear-gradient(90deg, #06b6d4, #7c3aed);
+      color: #fff;
+    }
+
+    #reset {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    table {
+      width: 100%;
+      max-width: 520px;
+      margin: 20px auto;
+      border-collapse: collapse;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #1e293b;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    th {
+      background: #1e293b;
+    }
+
+    footer {
+      margin-top: 20px;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    @media (max-width: 400px) {
+      h1 { font-size: 22px; }
+      select, input, button { font-size: 14px; padding: 10px; }
+      th, td { font-size: 12px; padding: 6px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🎯 الهدف: 1300 ريال</h1>
+  <h2 id="total">المجموع الحالي: 0 ريال</h2>
+  <div class="progress"><i id="progress"></i></div>
+
+  <div>
+    <label>اختر العضو</label><br>
+    <select id="member">
+      <option value="az">az</option>
+      <option value="𝐓𝐨𝐦𝐮𝐫𝐚">𝐓𝐨𝐦𝐮𝐫𝐚</option>
+      <option value="11">11</option>
+      <option value="Satoru">Satoru</option>
+      <option value="KKS">KKS</option>
+    </select>
+  </div>
+
+  <div>
+    <label>أدخل المبلغ (+ للإيداع / - للسحب)</label><br>
+    <input type="number" id="amount" placeholder="مثال: 200">
+  </div>
+
+  <div>
+    <button id="add">تسجيل العملية</button>
+    <button id="reset">🗑️ تصفير جميع العمليات</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>الوقت</th><th>العضو</th><th>المبلغ</th></tr>
+    </thead>
+    <tbody id="txns"></tbody>
+  </table>
+
+  <footer>💡 البيانات الآن مشتركة مباشرة بين جميع الأعضاء عبر Firebase Firestore.</footer>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBEJ9SZVaoMb9ic2_g8KzCWobuJ1e2Nvz0",
+      authDomain: "friends-moneyit.firebaseapp.com",
+      projectId: "friends-moneyit",
+      storageBucket: "friends-moneyit.firebasestorage.app",
+      messagingSenderId: "27243905998",
+      appId: "1:27243905998:web:05cc24617a9a10bbf6219f",
+      measurementId: "G-TT85S7XHST"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    async function render() {
+      const snapshot = await db.collection('transactions').orderBy('ts','desc').get();
+      const tbody = document.getElementById('txns');
+      tbody.innerHTML = '';
+      let total = 0;
+      snapshot.forEach(doc => {
+        const t = doc.data();
+        total += t.amount;
+
+        // أيقونات للإيداع والسحب
+        const sign = t.amount > 0 ? '🔺' : '🔻';
+        const amountText = `${sign} ${Math.abs(t.amount)} ريال`;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${t.ts?.toDate().toLocaleString('ar-EG')||''}</td><td>${t.member}</td><td>${amountText}</td>`;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('total').textContent = `المجموع الحالي: ${total} ريال`;
+      document.getElementById('progress').style.width = Math.min(100,(total/1300*100))+'%';
+    }
+
+    document.getElementById('add').onclick = async () => {
+      const member = document.getElementById('member').value;
+      const amount = Number(document.getElementById('amount').value);
+      if(!amount) return alert('أدخل مبلغ صالح');
+
+      await db.collection('transactions').add({
+        member,
+        amount,
+        ts: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      document.getElementById('amount').value='';
+      render();
+    };
+
+    // زر التصفير
+    document.getElementById('reset').onclick = async () => {
+      if(!confirm('⚠️ هل أنت متأكد من تصفير كل العمليات؟')) return;
+
+      const snapshot = await db.collection('transactions').get();
+      const batch = db.batch();
+      snapshot.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      render();
+    };
+
+    render();
+  </script>
+</body>
+</html>
+
